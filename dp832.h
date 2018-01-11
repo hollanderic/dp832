@@ -19,9 +19,12 @@ public:
 
     void Reset() { write("*RST"); };
 
-
-    //int SetCurrent(int channel, double limit);
+    int SetCurrent(int channel, double limit);
     int SetVoltage(int channel, double limit);
+
+    double MeasureVoltage(int channel);
+    double MeasureCurrent(int channel);
+    double MeasurePower(int channel);
 
     int write(const char *command);
     int read(char *buf, int len);
