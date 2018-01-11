@@ -26,8 +26,13 @@ public:
     double MeasureCurrent(int channel);
     double MeasurePower(int channel);
 
+
+private:
+
     int write(const char *command);
     int read(char *buf, int len);
-private:
+
+    int SetLimit(int channel, const char *tag, double limit);
+    double Measure(int channel, const char *tag);
     fstream fhandle_;
 };

@@ -63,39 +63,37 @@ int dp830::AllOff() {
     return 0;
 }
 
+
+// Routines for setting operating parameters.  Note these are not
+//  overvoltage/overcurrent protections.
+int dp830::SetLimit(int channel, const char *tag, double limit){
+    char buf[40];
+    snprintf(buf,sizeof(buf),":SOUR%d:%s:IMM %6.3f",channel,tag,limit);
+    return write(buf);
+}
 int dp830::SetVoltage(int channel, double limit){
-    char buf[40];
-    snprintf(buf,sizeof(buf),":SOUR%d:VOLT:IMM %6.3f",channel,limit);
-    return write(buf);
+    return SetLimit(channel,"VOLT",limit);
 }
-
 int dp830::SetCurrent(int channel, double limit){
-    char buf[40];
-    snprintf(buf,sizeof(buf),":SOUR%d:CURR:IMM %6.3f",channel,limit);
-    return write(buf);
+    return SetLimit(channel,"CURR",limit);
 }
 
-double dp830::MeasureVoltage(int channel) {
+
+// Measurement routines
+double dp830::Measure(int channel, const char *tag) {
     char buf[40];
     char buf2[40];
-    snprintf(buf,sizeof(buf),":MEAS:VOLT? CH%d",channel);
+    snprintf(buf,sizeof(buf),":MEAS:%s? CH%d",tag,channel);
     write(buf);
     read(buf2,sizeof(buf2));
     return std::stod(buf2,NULL);
+}
+double dp830::MeasureVoltage(int channel) {
+    return Measure(channel,"VOLT");
 }
 double dp830::MeasureCurrent(int channel) {
-    char buf[40];
-    char buf2[40];
-    snprintf(buf,sizeof(buf),":MEAS:CURR? CH%d",channel);
-    write(buf);
-    read(buf2,sizeof(buf2));
-    return std::stod(buf2,NULL);
+    return Measure(channel,"CURR");
 }
 double dp830::MeasurePower(int channel) {
-    char buf[40];
-    char buf2[40];
-    snprintf(buf,sizeof(buf),":MEAS:POWE? CH%d",channel);
-    write(buf);
-    read(buf2,sizeof(buf2));
-    return std::stod(buf2,NULL);
+    return Measure(channel,"POWE");
 }
