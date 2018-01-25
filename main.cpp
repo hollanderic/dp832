@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include "dp832.h"
+#include <string>
 
 /* psutil - utility for controlling Rigol dp8xx series power supplies
 
@@ -19,10 +20,33 @@
     b - Bounce the channel.  Parameter is the off period in seconds.  Will set
         the channel output to 0.0V for that many seconds.
 
+    d - Path to the power supply's USB device, defaults to /dev/usbtmc1
+
     TODO - better range checking on parameters, but this will be done in the
             underlying dp830 class and handled via return parameters.
 
 */
+
+const std::string kValidArgs = "c:v:i:s:b:d:";
+const std::string kDefaultUSBDevicePath = "/dev/usbtmc1";
+
+// Finds and returns the device path argument from the argument list.
+// Returns kDefaultUSBDevicePath if none is provided.
+const std::string getDevicePathArg(int argc, char** argv) {
+    char opt;
+    std::string result = kDefaultUSBDevicePath;
+    while ((opt = getopt(argc, argv, kValidArgs.c_str()))) {
+        if (opt == 'd') {
+            result = string(optarg);
+            break;
+        }
+    }
+
+    // Reset option parser.
+    optind = 1; 
+
+    return result;
+}
 
 int main (int argc, char** argv) {
     int opt;
@@ -34,10 +58,10 @@ int main (int argc, char** argv) {
     bool setcurrent=false;
     bool setstate=false;
 
-    dp830 psu;
-    //psu.Reset();
+    const std::string psuDevicePath = getDevicePathArg(argc, argv);
+    dp830 psu(psuDevicePath.c_str());
 
-    while ((opt = getopt(argc, argv, "c:v:i:s:b:")) != -1) {
+    while ((opt = getopt(argc, argv, kValidArgs.c_str())) != -1) {
         switch (opt) {
             case 'c':
                 channel = atoi(optarg);
