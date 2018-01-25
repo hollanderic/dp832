@@ -1,13 +1,12 @@
+CXXFLAGS:=-std=c++11 -O2
 
+EXEC = psutil
 
+.all: ${EXEC}
 
-CXXFLAGS:=-std=c++11
-SOURCES:=dp832.cpp \
-		 main.cpp
-
-.all: psutil
-
-.phony: psutil
-
-psutil: dp832.cpp main.cpp
+${EXEC}: dp832.cpp main.cpp
 	@c++ $(CXXFLAGS) $^ -o $@
+
+.phony: clean
+clean:
+	rm ${EXEC}
