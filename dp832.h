@@ -7,7 +7,7 @@ using namespace std;
 class dp830 {
 public:
     dp830(const char *devname);
-    dp830() : dp830("/dev/usbtmc1") {};
+    dp830() : dp830("/dev/usbtmc3") {};
     ~dp830();
 
     int On(int channel);
