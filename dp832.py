@@ -13,11 +13,17 @@ class dp832:
   def Read(self):
     return self.fd.readline()
 
-
   def GetState(self, channel):
     self.Write(":OUTP:STAT? CH%d\n"%channel)
-    return self.Read()
-
+    state = self.Read().strip()
+    retval = {}
+    retval["State"] = state
+    retval["VLimit"] = self.GetVoltageSetPoint(channel)
+    retval["ILimit"] = self.GetCurrentSetPoint(channel)
+    retval["V"] = self.MeasureVoltage(channel)
+    retval["I"] = self.MeasureCurrent(channel)
+    retval["P"] = self.MeasurePower(channel)
+    return retval
 
   def On(self, channel):
     self.Write(":OUTP:STAT CH%d,ON\n"%channel)
