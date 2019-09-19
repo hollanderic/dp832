@@ -1,17 +1,45 @@
 #!/usr/bin/env python
-import time
+import time, socket
+class dp832_mock:
+  def __init__(self):
+    pass
+  def GetState(self, channel):
+    return {"State":"OFF", "VLimit":10.2, "ILimit":2.2, "V":1.1, "I":2.2, "P":2.42}
 
 class dp832:
-  def __init__(self, fname="/dev/usbtmc3"):
-    self.fd = open(fname,"w+")
-    if not self.fd:
-      print("Failed to open %s"%fname)
-
+  def __init__(self, fname="/dev/usbtmc3", ip=None, port=5555):
+    self.ip = ip
+    self.connected = False
+    if self.ip:
+      try:
+        self.clientsock = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
+        self.clientsock.connect((self.ip, 5555))
+        print("connection made to %s"%self.ip)
+        self.connected = True
+      except socket.error as msg:
+        self.clientsock = None
+        self.connected = False
+    else:
+      try:
+        self.fd = open(fname,"w+")
+        self.connected = True
+      except IOError as e:
+        self.fd = None
+        print("Could not open %s -- %s"%(fname,e.strerror))
+  def isConnected(self):
+    return self.connected
 
   def Write(self, command):
-    self.fd.write(command)
+    if self.ip:
+      self.clientsock.send(command)
+    else:
+      self.fd.write(command)
   def Read(self):
-    return self.fd.readline()
+    if self.ip:
+      data = self.clientsock.recv(1024)
+      return data
+    else:
+      return self.fd.readline()
 
   def GetState(self, channel):
     self.Write(":OUTP:STAT? CH%d\n"%channel)

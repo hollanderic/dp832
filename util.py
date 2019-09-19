@@ -2,6 +2,7 @@
 
 import Tkinter as tk
 import dp832
+import sys
 
 
 class Plotter(tk.Canvas):
@@ -111,7 +112,12 @@ def destroy_callback():
 
 root = tk.Tk()
 root.protocol("WM_DELETE_WINDOW", destroy_callback)
+#dp = dp832.dp832(ip="192.168.8d6.79")
 dp = dp832.dp832()
+
+if not dp.isConnected():
+  print("Could not open connection to Rigol")
+  sys.exit(-1)
 print dp.GetState(1)
 app = Application(dp, master = root)
 root.title("Rigol DP832")
