@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import Tkinter as tk
+#import Tkinter as tk
+import tkinter as tk
 import dp832
 import sys
 
@@ -16,7 +17,7 @@ class Plotter(tk.Canvas):
   def update(self, state=None):
     self.create_line(0, self.height-8, self.width, self.height-8, fill="white")
     for y in range(self.height - 28, 0, -20):
-      print y
+      print(y)
       self.create_line(0, y, self.width, y, fill="grey", dash=(2,2))
     if state:
       pass
@@ -118,7 +119,7 @@ dp = dp832.dp832()
 if not dp.isConnected():
   print("Could not open connection to Rigol")
   sys.exit(-1)
-print dp.GetState(1)
+print(dp.GetState(1))
 app = Application(dp, master = root)
 root.title("Rigol DP832")
 root.mainloop()

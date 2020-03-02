@@ -7,7 +7,7 @@ class dp832_mock:
     return {"State":"OFF", "VLimit":10.2, "ILimit":2.2, "V":1.1, "I":2.2, "P":2.42}
 
 class dp832:
-  def __init__(self, fname="/dev/usbtmc3", ip=None, port=5555):
+  def __init__(self, fname="/dev/usbtmc0", ip=None, port=5555):
     self.ip = ip
     self.connected = False
     if self.ip:
@@ -34,6 +34,7 @@ class dp832:
       self.clientsock.send(command)
     else:
       self.fd.write(command)
+      self.fd.flush()
   def Read(self):
     if self.ip:
       data = self.clientsock.recv(1024)
