@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include "dp832.h"
 #include <string>
+#include <iostream>
 
 /* psutil - utility for controlling Rigol dp8xx series power supplies
 
@@ -28,7 +29,7 @@
 */
 
 const std::string kValidArgs = "c:v:i:s:b:d:";
-const std::string kDefaultUSBDevicePath = "/dev/usbtmc1";
+const std::string kDefaultUSBDevicePath = "/dev/usbtmc0";
 
 // Finds and returns the device path argument from the argument list.
 // Returns kDefaultUSBDevicePath if none is provided.
@@ -59,6 +60,7 @@ int main (int argc, char** argv) {
     bool setstate=false;
 
     const std::string psuDevicePath = getDevicePathArg(argc, argv);
+    std::cout << "psuDevicePath: " << psuDevicePath << std::endl;
     dp830 psu(psuDevicePath.c_str());
 
     while ((opt = getopt(argc, argv, kValidArgs.c_str())) != -1) {
@@ -67,6 +69,7 @@ int main (int argc, char** argv) {
                 channel = atoi(optarg);
                 if ((channel < 1) || (channel > 3))
                     return -1;
+                break;
             case 'v':
                 voltage = std::stod(optarg);
                 psu.SetVoltage(channel,voltage);
@@ -93,6 +96,7 @@ int main (int argc, char** argv) {
         }
     }
     usleep(1*1e6);
+    printf("get channel %d\n", channel);
 
 
 

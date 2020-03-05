@@ -16,8 +16,8 @@ current = 0
 dp = dp832.dp832()
 
 for o, a in opts:
-  print o
-  print a
+  print(o)
+  print(a)
   if o == "-c":
     channel = int(a)
     if not channel in (1,2,3):
