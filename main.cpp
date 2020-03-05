@@ -69,6 +69,7 @@ int main (int argc, char** argv) {
                 channel = atoi(optarg);
                 if ((channel < 1) || (channel > 3))
                     return -1;
+                break;
             case 'v':
                 voltage = std::stod(optarg);
                 psu.SetVoltage(channel,voltage);
