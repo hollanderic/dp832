@@ -22,12 +22,21 @@
 
     d - Path to the power supply's USB device, defaults to /dev/usbtmc1
 
+    x - extra control mode - measurements -m and wait times -w can be specified in sequence
+
+    w - wait time in ms
+
+    m - measure selected channel
+
+      e.g. ./psutil -d /dev/usbtmc0 -x -c1 -m -w500 -m -v4.5 -w200 -m
+      select ch1; measure ch1; wait 500ms; measure ch1; set voltage to 4.5V; etc
+
     TODO - better range checking on parameters, but this will be done in the
             underlying dp830 class and handled via return parameters.
 
 */
 
-const std::string kValidArgs = "c:v:i:s:b:d:";
+const std::string kValidArgs = "c:v:i:s:b:d:xmw:";
 const std::string kDefaultUSBDevicePath = "/dev/usbtmc1";
 
 // Finds and returns the device path argument from the argument list.
@@ -35,9 +44,25 @@ const std::string kDefaultUSBDevicePath = "/dev/usbtmc1";
 const std::string getDevicePathArg(int argc, char** argv) {
     char opt;
     std::string result = kDefaultUSBDevicePath;
-    while ((opt = getopt(argc, argv, kValidArgs.c_str()))) {
+    while ((opt = getopt(argc, argv, kValidArgs.c_str())) >= 0) {
         if (opt == 'd') {
             result = string(optarg);
+            break;
+        }
+    }
+
+    // Reset option parser.
+    optind = 1; 
+
+    return result;
+}
+
+bool isExtraMode(int argc, char** argv) {
+    char opt;
+    bool result = false;
+    while ((opt = getopt(argc, argv, kValidArgs.c_str())) >= 0) {
+        if (opt == 'x') {
+            result = true;
             break;
         }
     }
@@ -57,6 +82,7 @@ int main (int argc, char** argv) {
     bool setvoltage=false;
     bool setcurrent=false;
     bool setstate=false;
+    bool extra = isExtraMode(argc, argv);
 
     const std::string psuDevicePath = getDevicePathArg(argc, argv);
     dp830 psu(psuDevicePath.c_str());
@@ -65,8 +91,10 @@ int main (int argc, char** argv) {
         switch (opt) {
             case 'c':
                 channel = atoi(optarg);
-                if ((channel < 1) || (channel > 3))
-                    return -1;
+                if ((channel < 1) || (channel > 3)) {
+                   fprintf(stderr, "Channel must be in range 1..3\n");
+                   return -1;
+                }
             case 'v':
                 voltage = std::stod(optarg);
                 psu.SetVoltage(channel,voltage);
@@ -88,20 +116,41 @@ int main (int argc, char** argv) {
             case 'b':
                 psu.Bounce(channel,std::stod(optarg));
                 break;
+            case 'm':
+                if (extra) {
+                  printf("c=%d,s=%d,vs=%0.03f,is=%0.03f,v=%0.03f,i=%0.03f,p=%0.03f\n", 
+                    channel,
+                    psu.GetState(channel),
+                    psu.GetVoltageSetPoint(channel),
+                    psu.GetCurrentSetPoint(channel),
+                    psu.MeasureVoltage(channel),
+                    psu.MeasureCurrent(channel),
+                    psu.MeasurePower(channel));
+                } else { 
+                    printf("Can't use 'm' in legacy mode, add -x flag\n");
+                }
+                break;
+            case 'w': // ms delay
+                if (extra) {
+                    usleep(1000*std::stod(optarg));
+                } else { 
+                    printf("Can't use 'W' in legacy mode, add -x flag\n");
+                }
+                break;
             default:
                 break;
         }
     }
-    usleep(1*1e6);
 
+    if (!extra) {
+      usleep(1*1e6);
 
-
-    printf("Voltage = %f\n",psu.MeasureVoltage(channel));
-    printf("Current = %f\n",psu.MeasureCurrent(channel));
-    printf("Power   = %f\n",psu.MeasurePower(channel));
-    printf("Volt sp   = %f\n",psu.GetVoltageSetPoint(channel));
-    printf("Curr sp   = %f\n",psu.GetCurrentSetPoint(channel));
-
+      printf("Voltage = %f\n",psu.MeasureVoltage(channel));
+      printf("Current = %f\n",psu.MeasureCurrent(channel));
+      printf("Power   = %f\n",psu.MeasurePower(channel));
+      printf("Volt sp   = %f\n",psu.GetVoltageSetPoint(channel));
+      printf("Curr sp   = %f\n",psu.GetCurrentSetPoint(channel));
+    }
     //Test Bounce feature - used to bounce a target
     //usleep(3*1e6);
     //psu.Bounce(1,2.5);
