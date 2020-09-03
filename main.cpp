@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include "dp832.h"
 #include <string>
+#include <chrono>
 
 /* psutil - utility for controlling Rigol dp8xx series power supplies
 
@@ -38,6 +39,8 @@
 
 const std::string kValidArgs = "c:v:i:s:b:d:xmw:";
 const std::string kDefaultUSBDevicePath = "/dev/usbtmc1";
+
+using namespace std::chrono;
 
 // Finds and returns the device path argument from the argument list.
 // Returns kDefaultUSBDevicePath if none is provided.
@@ -95,6 +98,7 @@ int main (int argc, char** argv) {
                    fprintf(stderr, "Channel must be in range 1..3\n");
                    return -1;
                 }
+                break;
             case 'v':
                 voltage = std::stod(optarg);
                 psu.SetVoltage(channel,voltage);
@@ -118,7 +122,8 @@ int main (int argc, char** argv) {
                 break;
             case 'm':
                 if (extra) {
-                  printf("c=%d,s=%d,vs=%0.03f,is=%0.03f,v=%0.03f,i=%0.03f,p=%0.03f\n", 
+                  printf("t=%lu,c=%d,s=%d,vs=%0.03f,is=%0.03f,v=%0.03f,i=%0.03f,p=%0.03f\n", 
+                    (duration_cast<milliseconds>(system_clock::now().time_since_epoch())).count(),
                     channel,
                     psu.GetState(channel),
                     psu.GetVoltageSetPoint(channel),
@@ -127,14 +132,14 @@ int main (int argc, char** argv) {
                     psu.MeasureCurrent(channel),
                     psu.MeasurePower(channel));
                 } else { 
-                    printf("Can't use 'm' in legacy mode, add -x flag\n");
+                    fprintf(stderr, "Can't use -m in legacy mode, add -x flag\n");
                 }
                 break;
             case 'w': // ms delay
                 if (extra) {
                     usleep(1000*std::stod(optarg));
                 } else { 
-                    printf("Can't use 'W' in legacy mode, add -x flag\n");
+                    fprintf(stderr, "Can't use -w in legacy mode, add -x flag\n");
                 }
                 break;
             default:
