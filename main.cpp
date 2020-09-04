@@ -29,6 +29,8 @@
 
     m - measure selected channel
 
+    r - repeatedly measure selected channel with parameter as time to next measure
+
       e.g. ./psutil -d /dev/usbtmc0 -x -c1 -m -w500 -m -v4.5 -w200 -m
       select ch1; measure ch1; wait 500ms; measure ch1; set voltage to 4.5V; etc
 
@@ -37,7 +39,7 @@
 
 */
 
-const std::string kValidArgs = "c:v:i:s:b:d:xmw:";
+const std::string kValidArgs = "c:v:i:s:b:d:xmw:r:";
 const std::string kDefaultUSBDevicePath = "/dev/usbtmc1";
 
 using namespace std::chrono;
@@ -120,21 +122,36 @@ int main (int argc, char** argv) {
             case 'b':
                 psu.Bounce(channel,std::stod(optarg));
                 break;
-            case 'm':
+            case 'r':
+            case 'm': {
                 if (extra) {
-                  printf("t=%lu,c=%d,s=%d,vs=%0.03f,is=%0.03f,v=%0.03f,i=%0.03f,p=%0.03f\n", 
-                    (duration_cast<milliseconds>(system_clock::now().time_since_epoch())).count(),
-                    channel,
-                    psu.GetState(channel),
-                    psu.GetVoltageSetPoint(channel),
-                    psu.GetCurrentSetPoint(channel),
-                    psu.MeasureVoltage(channel),
-                    psu.MeasureCurrent(channel),
-                    psu.MeasurePower(channel));
+                  int reps = 1;
+                  int tt = 0;
+		  if (opt == 'r') {
+                     tt = std::stod(optarg);
+                     reps = 1000/tt;
+                  }
+                  for (int i = 0; i < reps; i++) {
+                    auto now = (duration_cast<milliseconds>(system_clock::now().time_since_epoch())).count();
+                    printf("t=%lu,c=%d,s=%d,vs=%0.03f,is=%0.03f,v=%0.03f,i=%0.03f,p=%0.03f\n", 
+                      now,
+                      channel,
+                      psu.GetState(channel),
+                      psu.GetVoltageSetPoint(channel),
+                      psu.GetCurrentSetPoint(channel),
+                      psu.MeasureVoltage(channel),
+                      psu.MeasureCurrent(channel),
+                      psu.MeasurePower(channel));
+                    auto delta = (duration_cast<milliseconds>(system_clock::now().time_since_epoch())).count() - now;
+                    if ((tt > delta)) {
+                      usleep(1000*(tt-delta));
+                    }
+                  }
                 } else { 
                     fprintf(stderr, "Can't use -m in legacy mode, add -x flag\n");
                 }
                 break;
+            }
             case 'w': // ms delay
                 if (extra) {
                     usleep(1000*std::stod(optarg));
