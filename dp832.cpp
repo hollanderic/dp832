@@ -40,6 +40,8 @@ int dp830::GetState(int channel){
 
 int dp830::On(int channel) {
     char buf[40];
+    snprintf(buf,sizeof(buf),":SOUR%d:CURR:PROT:CLEAR",channel);
+    write_(buf);
     snprintf(buf,sizeof(buf),":OUTP:STAT CH%d,ON",channel);
     return write_(buf);
 }
@@ -76,6 +78,30 @@ int dp830::SetVoltage(int channel, double limit){
 }
 int dp830::SetCurrent(int channel, double limit){
     return SetLimit_(channel,"CURR",limit);
+}
+
+int dp830::SetOCP(int channel, double limit) {
+    char buf[60];
+    snprintf(buf,sizeof(buf),":SOUR%d:CURR:PROT:STAT ON",channel);
+    write_(buf);
+    snprintf(buf,sizeof(buf),":SOUR%d:CURR:PROT %6.3f",channel,limit);
+    return write_(buf);
+}
+
+double dp830::GetOCP(int channel) {
+    char buf[40];
+    snprintf(buf,sizeof(buf),":SOUR%d:CURR:PROT?",channel);
+    write_(buf);
+    read_(buf,sizeof(buf));
+    return std::stod(buf,NULL);
+}
+
+int dp830::GetOCPTripped(int channel) {
+    char buf[40];
+    snprintf(buf,sizeof(buf),":SOUR%d:CURR:PROT:TRIP?",channel);
+    write_(buf);
+    read_(buf,sizeof(buf));
+    return (strcmp(buf,"YES")==0)?1:0;
 }
 
 double dp830::GetSetPoint_(int channel, const char *tag) {

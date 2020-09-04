@@ -16,6 +16,8 @@
 
     i - Sets the current setpoint
 
+    t - Sets the overcurrent trip point
+
     s - Sets the state of the output (0-off, not 0-on)
 
     b - Bounce the channel.  Parameter is the off period in seconds.  Will set
@@ -39,7 +41,7 @@
 
 */
 
-const std::string kValidArgs = "c:v:i:s:b:d:xmw:r:";
+const std::string kValidArgs = "c:v:i:s:b:d:xmw:r:t:";
 const std::string kDefaultUSBDevicePath = "/dev/usbtmc1";
 
 using namespace std::chrono;
@@ -111,6 +113,10 @@ int main (int argc, char** argv) {
                 psu.SetCurrent(channel,current);
                 setcurrent=true;
                 break;
+            case 't':
+                current = std::stod(optarg);
+                psu.SetOCP(channel,current);
+                break;
             case 's':
                 state = !(atoi(optarg) == 0);
                 if (state)
@@ -133,15 +139,17 @@ int main (int argc, char** argv) {
                   }
                   for (int i = 0; i < reps; i++) {
                     auto now = (duration_cast<milliseconds>(system_clock::now().time_since_epoch())).count();
-                    printf("t=%lu,c=%d,s=%d,vs=%0.03f,is=%0.03f,v=%0.03f,i=%0.03f,p=%0.03f\n", 
+                    printf("t=%lu,c=%d,s=%d,vs=%0.03f,is=%0.03f,ocp=%0.03f,v=%0.03f,i=%0.03f,p=%0.03f,tr=%d\n", 
                       now,
                       channel,
                       psu.GetState(channel),
                       psu.GetVoltageSetPoint(channel),
                       psu.GetCurrentSetPoint(channel),
+                      psu.GetOCP(channel),
                       psu.MeasureVoltage(channel),
                       psu.MeasureCurrent(channel),
-                      psu.MeasurePower(channel));
+                      psu.MeasurePower(channel),
+                      psu.GetOCPTripped(channel));
                     auto delta = (duration_cast<milliseconds>(system_clock::now().time_since_epoch())).count() - now;
                     if ((tt > delta)) {
                       usleep(1000*(tt-delta));
