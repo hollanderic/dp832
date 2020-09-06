@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include "dp832.h"
 #include <string>
+#include <chrono>
 
 /* psutil - utility for controlling Rigol dp8xx series power supplies
 
@@ -15,6 +16,8 @@
 
     i - Sets the current setpoint
 
+    t - Sets the overcurrent trip point
+
     s - Sets the state of the output (0-off, not 0-on)
 
     b - Bounce the channel.  Parameter is the off period in seconds.  Will set
@@ -22,22 +25,51 @@
 
     d - Path to the power supply's USB device, defaults to /dev/usbtmc1
 
+    x - extra control mode - measurements -m and wait times -w can be specified in sequence
+
+    w - wait time in ms
+
+    m - measure selected channel
+
+    r - repeatedly measure selected channel with parameter as time to next measure
+
+      e.g. ./psutil -d /dev/usbtmc0 -x -c1 -m -w500 -m -v4.5 -w200 -m
+      select ch1; measure ch1; wait 500ms; measure ch1; set voltage to 4.5V; etc
+
     TODO - better range checking on parameters, but this will be done in the
             underlying dp830 class and handled via return parameters.
 
 */
 
-const std::string kValidArgs = "c:v:i:s:b:d:";
+const std::string kValidArgs = "c:v:i:s:b:d:xmw:r:t:";
 const std::string kDefaultUSBDevicePath = "/dev/usbtmc1";
+
+using namespace std::chrono;
 
 // Finds and returns the device path argument from the argument list.
 // Returns kDefaultUSBDevicePath if none is provided.
 const std::string getDevicePathArg(int argc, char** argv) {
     char opt;
     std::string result = kDefaultUSBDevicePath;
-    while ((opt = getopt(argc, argv, kValidArgs.c_str()))) {
+    while ((opt = getopt(argc, argv, kValidArgs.c_str())) >= 0) {
         if (opt == 'd') {
             result = string(optarg);
+            break;
+        }
+    }
+
+    // Reset option parser.
+    optind = 1; 
+
+    return result;
+}
+
+bool isExtraMode(int argc, char** argv) {
+    char opt;
+    bool result = false;
+    while ((opt = getopt(argc, argv, kValidArgs.c_str())) >= 0) {
+        if (opt == 'x') {
+            result = true;
             break;
         }
     }
@@ -57,6 +89,7 @@ int main (int argc, char** argv) {
     bool setvoltage=false;
     bool setcurrent=false;
     bool setstate=false;
+    bool extra = isExtraMode(argc, argv);
 
     const std::string psuDevicePath = getDevicePathArg(argc, argv);
     dp830 psu(psuDevicePath.c_str());
@@ -65,8 +98,11 @@ int main (int argc, char** argv) {
         switch (opt) {
             case 'c':
                 channel = atoi(optarg);
-                if ((channel < 1) || (channel > 3))
-                    return -1;
+                if ((channel < 1) || (channel > 3)) {
+                   fprintf(stderr, "Channel must be in range 1..3\n");
+                   return -1;
+                }
+                break;
             case 'v':
                 voltage = std::stod(optarg);
                 psu.SetVoltage(channel,voltage);
@@ -76,6 +112,10 @@ int main (int argc, char** argv) {
                 current = std::stod(optarg);
                 psu.SetCurrent(channel,current);
                 setcurrent=true;
+                break;
+            case 't':
+                current = std::stod(optarg);
+                psu.SetOCP(channel,current);
                 break;
             case 's':
                 state = !(atoi(optarg) == 0);
@@ -88,20 +128,59 @@ int main (int argc, char** argv) {
             case 'b':
                 psu.Bounce(channel,std::stod(optarg));
                 break;
+            case 'r':
+            case 'm': {
+                if (extra) {
+                  int reps = 1;
+                  int tt = 0;
+		  if (opt == 'r') {
+                     tt = std::stod(optarg);
+                     reps = 1000/tt;
+                  }
+                  for (int i = 0; i < reps; i++) {
+                    auto now = (duration_cast<milliseconds>(system_clock::now().time_since_epoch())).count();
+                    printf("t=%lu,c=%d,s=%d,vs=%0.03f,is=%0.03f,ocp=%0.03f,v=%0.03f,i=%0.03f,p=%0.03f,tr=%d\n", 
+                      now,
+                      channel,
+                      psu.GetState(channel),
+                      psu.GetVoltageSetPoint(channel),
+                      psu.GetCurrentSetPoint(channel),
+                      psu.GetOCP(channel),
+                      psu.MeasureVoltage(channel),
+                      psu.MeasureCurrent(channel),
+                      psu.MeasurePower(channel),
+                      psu.GetOCPTripped(channel));
+                    auto delta = (duration_cast<milliseconds>(system_clock::now().time_since_epoch())).count() - now;
+                    if ((tt > delta)) {
+                      usleep(1000*(tt-delta));
+                    }
+                  }
+                } else { 
+                    fprintf(stderr, "Can't use -m in legacy mode, add -x flag\n");
+                }
+                break;
+            }
+            case 'w': // ms delay
+                if (extra) {
+                    usleep(1000*std::stod(optarg));
+                } else { 
+                    fprintf(stderr, "Can't use -w in legacy mode, add -x flag\n");
+                }
+                break;
             default:
                 break;
         }
     }
-    usleep(1*1e6);
 
+    if (!extra) {
+      usleep(1*1e6);
 
-
-    printf("Voltage = %f\n",psu.MeasureVoltage(channel));
-    printf("Current = %f\n",psu.MeasureCurrent(channel));
-    printf("Power   = %f\n",psu.MeasurePower(channel));
-    printf("Volt sp   = %f\n",psu.GetVoltageSetPoint(channel));
-    printf("Curr sp   = %f\n",psu.GetCurrentSetPoint(channel));
-
+      printf("Voltage = %f\n",psu.MeasureVoltage(channel));
+      printf("Current = %f\n",psu.MeasureCurrent(channel));
+      printf("Power   = %f\n",psu.MeasurePower(channel));
+      printf("Volt sp   = %f\n",psu.GetVoltageSetPoint(channel));
+      printf("Curr sp   = %f\n",psu.GetCurrentSetPoint(channel));
+    }
     //Test Bounce feature - used to bounce a target
     //usleep(3*1e6);
     //psu.Bounce(1,2.5);

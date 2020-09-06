@@ -19,10 +19,14 @@ public:
     void Reset() { write_("*RST"); };
 
     int SetCurrent(int channel, double limit);
+    int SetOCP(int channel, double limit);
     int SetVoltage(int channel, double limit);
+    double GetOCP(int channel);
     double GetCurrentSetPoint(int channel);
     double GetVoltageSetPoint(int channel);
 
+
+    int GetOCPTripped(int channel);
     int Bounce(int channel, double delay);
 
     double MeasureVoltage(int channel);
