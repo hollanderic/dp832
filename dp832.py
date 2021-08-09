@@ -21,7 +21,7 @@ class dp832:
         self.connected = False
     else:
       try:
-        self.fd = open(fname,"w+")
+        self.fd = open(fname,"w+", buffering=1)
         self.connected = True
       except IOError as e:
         self.fd = None
